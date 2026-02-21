@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+logos="$(
+  fastfetch --list-logos \
+  | sed -n '/^Builtin logos:/,$p' \
+  | sed -E 's/^[0-9]+\)\s+//g' \
+  | sed -E 's/"//g' \
+  | awk '{print $1}' \
+  | sed '/^Builtin$/d;/^Custom$/d;/^logos:$/d' \
+  | sort -u
+)"
+
+if [[ -z "${logos// }" ]]; then
+  echo "Could not parse logos from 'fastfetch --list-logos'."
+  exit 1
+fi
+
+# Force a pseudo-TTY so fastfetch keeps ANSI colors in fzf preview
+preview_cmd='script -qfc "bash -lc '\''env TERM=xterm-256color COLORTERM=truecolor fastfetch --logo {} --logo-width 24 --structure os:kernel:uptime:packages:shell:wm:cpu:gpu:memory:disk --separator \"  \"'\''" /dev/null'
+
+printf "%s\n" "$logos" | fzf \
+  --prompt="fastfetch logo > " \
+  --height=80% \
+  --border \
+  --preview-window=right:60%:wrap \
+  --preview "$preview_cmd"
